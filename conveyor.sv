@@ -1,0 +1,278 @@
+module conveyor
+#
+(
+	parameter A_WIDTH = 10,
+	parameter D_WIDTH = 32
+)
+(
+	input logic  clk_i,
+	input logic  rst_i,
+	input logic [A_WIDTH-1:0] rx_flow_num_i,
+	input logic [15:0] pkt_size_i,
+	input logic pkt_size_en_i,
+	
+	input logic rd_stb_i,
+	input logic [A_WIDTH-1:0] rd_flow_num_i,
+	output logic [D_WIDTH-1:0] rd_data_o,
+	output logic rd_data_val_o
+);
+
+bit [15:0] buff_storage;
+bit [D_WIDTH-1:0] st1_in, st1_mem, st2_in, st2_mem, data_read, data_write, st0_in, data_out, data_read_storage,write_to_storage;
+bit [A_WIDTH-1:0] r_adr, w_adr, st0_wr, st1_wr;
+bit wr_en_1, wr_en_2, wr_en_3, wr_r_en_1, wr_r_en_2, wr_r_en_3, enable_sum, enable_sum_1, enable_sum_2, enable_sum_3 ,erise_1, erise_2, erise_3;
+
+
+always_ff @(posedge clk_i)
+ begin
+
+// Pipeline stage 1
+
+	if(rd_stb_i) 
+		begin
+			st0_wr <= rd_flow_num_i;
+			buff_storage <= pkt_size_i;
+			st0_in	<= 0;
+			enable_sum <= 1;
+			wr_en_1 <= 1;
+			erise_1 <= 1;
+			rd_data_val_o <= 0;			
+		end 
+	else
+		begin
+			st0_wr <= rx_flow_num_i;
+			st0_in	<= pkt_size_i;
+			wr_en_1 <= pkt_size_en_i;
+			enable_sum <= 0;
+			buff_storage <= 0;
+			erise_1 <= 0; 
+		end  
+
+	r_adr	<= rx_flow_num_i;
+	// Pipeline stage 2
+	erise_2 <= erise_1;
+	enable_sum_1 <= enable_sum;
+	wr_en_2 <= wr_en_1;
+	wr_r_en_2 <= wr_r_en_1;
+	st1_in	<= st0_in;
+	st1_wr <= st0_wr;
+	st1_mem <= data_read;
+	// Pipeline stage 3
+	erise_3 <= erise_2;
+	enable_sum_2 <= enable_sum_1;
+	st2_in	<= st1_in;
+	wr_en_3 <= wr_en_2;
+	wr_r_en_3 <= wr_r_en_2;
+	w_adr <= st1_wr;
+	//data_write	<= st1_in + data_read;
+	
+	// Pipeline stage 4
+	enable_sum_3 <= enable_sum_2;
+	
+	if(erise_2) 
+	 begin
+	   data_write	<= 0;
+	   //write_to_storage <= data_read + buff_storage;
+	   
+	 end
+	  else data_write	<= st1_in + data_read;
+	
+	if(enable_sum_3)
+	   begin
+	     rd_data_o <= data_out + data_read_storage;
+	     rd_data_val_o <= 1;
+	   end
+	
+end 
+
+
+simple_dual_port_ram_single_clock  #(.DATA_WIDTH(D_WIDTH), .ADDR_WIDTH(A_WIDTH)) storage
+																					 (
+																					.data(pkt_size_i),
+																					.read_addr(w_adr),
+																					.write_addr(rx_flow_num_i),
+																					.we(rd_stb_i),
+																					.q(data_read_storage),
+																					.clk(clk_i)
+																					);
+																					
+																					
+																				
+
+
+true_dual_port_ram_single_clock  #(.DATA_WIDTH(D_WIDTH), .ADDR_WIDTH(A_WIDTH)) ram (
+																					.data_a(data_write),
+																					.addr_a(r_adr),
+																					.we_a(0),
+																					.q_a(data_read),
+																					
+																					.data_b(data_write),
+																					.addr_b(w_adr),
+																					.we_b(wr_en_3),
+																					.q_b(data_out),
+																					
+																					.clk(clk_i)
+																					);
+																																										
+
+
+endmodule
+
+
+
+// Quartus II Verilog Template
+// Simple Dual Port RAM with separate read/write addresses and
+// single read/write clock
+
+module simple_dual_port_ram_single_clock
+#(parameter DATA_WIDTH=8, parameter ADDR_WIDTH=6)
+(
+	input [(DATA_WIDTH-1):0] data,
+	input [(ADDR_WIDTH-1):0] read_addr, write_addr,
+	input we, clk,
+	output reg [(DATA_WIDTH-1):0] q
+);
+
+	// Declare the RAM variable
+	bit [DATA_WIDTH-1:0] ram[2**ADDR_WIDTH-1:0];
+
+	always @ (posedge clk)
+	begin
+		// Write
+		if (we)
+			ram[write_addr] = data;
+
+		// Read (if read_addr == write_addr, return OLD data).	To return
+		// NEW data, use = (blocking write) rather than <= (non-blocking write)
+		// in the write assignment.	 NOTE: NEW data may require extra bypass
+		// logic around the RAM.
+		q = ram[read_addr];
+	end
+
+endmodule
+
+// Quartus II Verilog Template
+// True Dual Port RAM with single clock
+
+module true_dual_port_ram_single_clock
+#(parameter DATA_WIDTH=8, parameter ADDR_WIDTH=6)
+(
+	input [(DATA_WIDTH-1):0] data_a, data_b,
+	input [(ADDR_WIDTH-1):0] addr_a, addr_b,
+	input we_a, we_b, clk,
+	output reg [(DATA_WIDTH-1):0] q_a, q_b
+);
+
+	// Declare the RAM variable
+	bit [DATA_WIDTH-1:0] ram[2**ADDR_WIDTH-1:0];
+
+	// Port A 
+	always @ (posedge clk)
+	begin
+		if (we_a)ram[addr_a] <= data_a;
+			q_a <= ram[addr_a];
+	end 
+
+	// Port B 
+	always @ (posedge clk)
+	begin
+		if (we_b)ram[addr_b] <= data_b;
+		q_b <= ram[addr_b];
+	end
+
+endmodule
+
+
+
+
+// Quartus II Verilog Template
+// Binary counter
+
+
+
+//****************************************************************
+//                  The testbench
+//****************************************************************
+
+
+module testbench
+#
+(
+	parameter A_WIDTH = 4,
+	parameter D_WIDTH = 32
+);
+
+	logic  clk_i, rst_i;
+	logic [A_WIDTH-1:0] rx_flow_num_i;
+	logic [15:0] pkt_size_i;
+	logic pkt_size_en_i;
+	
+	logic rd_stb_i;
+	logic [A_WIDTH-1:0] rd_flow_num_i;
+	logic [D_WIDTH-1:0] rd_data_o, rd_data_o_2;
+	logic rd_data_val_o;
+	
+  conveyor #(.A_WIDTH(A_WIDTH), .D_WIDTH(D_WIDTH)) DUT(.* , .rst_i(1'b0));
+
+
+bit [A_WIDTH-1:0] count, count2, count3;
+
+initial begin clk_i = 1'b0;
+forever #50 clk_i = !clk_i;
+end
+
+always_ff @(posedge clk_i) begin
+  if (clk_i)
+    begin
+      
+      if(count<=6)
+       begin
+        pkt_size_en_i <= 1;
+        pkt_size_i    <= ++count;     
+        rx_flow_num_i <= count;
+       end
+        else
+          begin
+            count <= 0;
+            count2++;
+            pkt_size_en_i <= 0;
+          end
+          
+      if(count2 == 2)    
+        if(count==3) begin
+          rd_stb_i <= 1;
+          rd_flow_num_i <= 3;
+        end
+        //else if(count==5) begin
+        //   rd_stb_i <= 1;
+        //   rd_flow_num_i <= 5;
+       // end 
+       else
+        begin
+         rd_stb_i <= 0;
+         rd_flow_num_i <= 0;
+        end 
+       
+     if(count2 == 4)    
+        if(count==3) begin
+          rd_stb_i <= 1;
+          rd_flow_num_i <= 2;
+        end
+       // else if(count==5) begin
+       //    rd_stb_i <= 1;
+       //    rd_flow_num_i <= 4;
+       // end 
+       
+        
+       else
+        begin
+         rd_stb_i <= 0;
+         rd_flow_num_i <= 0;
+        end 
+
+         
+     end    
+end
+
+endmodule
+
