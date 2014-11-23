@@ -234,7 +234,7 @@ end
 always_ff @(posedge clk_i) begin
  if (clk_i)
     begin
-    
+ /*     
     if(count<=6)
        begin
         pkt_size_en_i <= 1;
@@ -279,7 +279,7 @@ always_ff @(posedge clk_i) begin
          rd_stb_i <= 0;
          rd_flow_num_i <= 0;
         end 
-
+*/
          
     // end  
 
