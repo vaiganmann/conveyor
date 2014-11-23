@@ -1,0 +1,7 @@
+<?xml version="1.0" ?>
+<LOG_ROOT>
+	<PROJECT NAME="conveyor">
+		<CBX_INST_ENTRY INSTANCE_NAME="|conveyor|true_dual_port_ram_single_clock:ram|altsyncram:ram_rtl_0" CBX_FILE_NAME="altsyncram_3g02.tdf"/>
+		<CBX_INST_ENTRY INSTANCE_NAME="|conveyor|simple_dual_port_ram_single_clock:storage|altsyncram:ram_rtl_0" CBX_FILE_NAME="altsyncram_30j1.tdf"/>
+	</PROJECT>
+</LOG_ROOT>

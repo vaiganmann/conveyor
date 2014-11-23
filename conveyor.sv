@@ -170,34 +170,29 @@ module true_dual_port_ram_single_clock
 );
 
 	// Declare the RAM variable
-	bit [DATA_WIDTH-1:0] ram[2**ADDR_WIDTH-1:0];
+	reg [DATA_WIDTH-1:0] ram[2**ADDR_WIDTH-1:0];
 
 	// Port B 
-	/*always @ (posedge clk)
+	always @ (posedge clk)
 	begin
-		if (we_b) ram[addr_b] = data_b;
-		q_b = ram[addr_b];
-	end*/
+	  q_b = ram[addr_b];	
+		if (we_b)	ram[addr_b] = data_b;	
+	end
+
 
 	// Port A 
 	always @ (posedge clk)
 	begin
-	  q_b = ram[addr_b];	 
-	  if (we_a) ram[addr_a] = data_a; 
-	  if (we_b) ram[addr_b] = data_b;		
-		q_a = ram[addr_a];
-		//q_b = ram[addr_b];
+		if (we_a) ram[addr_a] = data_a; 	
+			q_a = ram[addr_a];
 	end 
+
+
 
 endmodule
 
-
-
-
 // Quartus II Verilog Template
 // Binary counter
-
-
 
 //****************************************************************
 //                  The testbench
@@ -235,7 +230,7 @@ always_ff @(posedge clk_i) begin
  if (clk_i)
     begin
     
-    if(count<=6)
+  if(count<=6)
        begin
         pkt_size_en_i <= 1;
         pkt_size_i    <= ++count;     
@@ -283,9 +278,9 @@ always_ff @(posedge clk_i) begin
          
     // end  
 
-
+/*
   
-    /*  if(count++<=10 && !aa)
+     if(count++<=10 && !aa)
        begin
         pkt_size_en_i <= 1;
         pkt_size_i    <= 100;     
