@@ -20,7 +20,7 @@ module conveyor
 bit [15:0] buff_storage;
 bit [D_WIDTH-1:0] st1_in, st1_mem, st2_in, st2_mem, data_read, data_write, st0_in, data_out, data_read_storage,write_to_storage;
 bit [A_WIDTH-1:0] r_adr, w_adr, st0_wr, st1_wr;
-bit wr_en_1, wr_en_2, wr_en_3, wr_r_en_1, wr_r_en_2, wr_r_en_3, enable_sum, enable_sum_1, enable_sum_2, enable_sum_3 ,erise_1, erise_2, erise_3;
+bit wr_en_1, wr_en_2, wr_en_3, wr_r_en_1, wr_r_en_2, wr_r_en_3, enable_sum, enable_sum_1, enable_sum_2, enable_sum_3 ,erise_1, erise_2, erise_3, erise_storage;
 
 
 always_ff @(posedge clk_i)
@@ -31,7 +31,7 @@ always_ff @(posedge clk_i)
 	if(rd_stb_i) 
 		begin
 			st0_wr <= rd_flow_num_i;
-			buff_storage <= pkt_size_en_i ? pkt_size_i : 0;
+			buff_storage <= pkt_size_en_i ? rd_flow_num_i : 0;
 			st0_in	<= 0;
 			enable_sum <= 1;
 			wr_en_1 <= 1;
@@ -44,7 +44,7 @@ always_ff @(posedge clk_i)
 			st0_in	<= pkt_size_en_i ? pkt_size_i : 0;
 			wr_en_1 <= pkt_size_en_i;
 			enable_sum <= 0;
-			buff_storage <= 0;
+			//buff_storage <= 0;
 			erise_1 <= 0; 
 		end  
 
@@ -87,7 +87,9 @@ always_ff @(posedge clk_i)
 	   begin
 	     rd_data_o <= data_out + data_read_storage;
 	     rd_data_val_o <= 1;
+	     erise_storage <= 1;
 	   end
+	   else  erise_storage <= 0;
 	
 end 
 
@@ -96,8 +98,8 @@ simple_dual_port_ram_single_clock  #(.DATA_WIDTH(D_WIDTH), .ADDR_WIDTH(A_WIDTH))
 																					 (
 																					.data(pkt_size_en_i ? pkt_size_i : 0),
 																					.read_addr(w_adr),
-																					.write_addr(rx_flow_num_i),
-																					.we(rd_stb_i),
+																					.write_addr(!erise_storage ? rx_flow_num_i : buff_storage),
+																					.we(!erise_storage ? rd_stb_i : 1),
 																					.q(data_read_storage),
 																					.clk(clk_i)
 																					);
@@ -230,7 +232,7 @@ always_ff @(posedge clk_i) begin
  if (clk_i)
     begin
     
-/*    if(count<=6)
+  if(count<=6)
        begin
         pkt_size_en_i <= 1;
         pkt_size_i    <= ++count;     
@@ -275,12 +277,12 @@ always_ff @(posedge clk_i) begin
          rd_flow_num_i <= 0;
         end 
 
-         
+      
     // end  
 
-*/
+
   
-     if(count++<=10 && !aa)
+  /*   if(count++<=10 && !aa)
        begin
         pkt_size_en_i <= 1;
         pkt_size_i    <= 100;     
